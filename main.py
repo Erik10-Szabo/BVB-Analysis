@@ -1,12 +1,5 @@
 import os
 import time
-import sys
-
-# Forțare completă a codării UTF-8 pentru a preveni orice eroare de tip ASCII pe Render
-os.environ["PYTHONIOENCODING"] = "utf-8"
-os.environ["LANG"] = "C.UTF-8"
-os.environ["LC_ALL"] = "C.UTF-8"
-
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
@@ -15,20 +8,20 @@ from google import genai
 
 app = FastAPI(title="BVB Market Intelligence Terminal")
 
-# Inițializare client Gemini
+# Initializare client Gemini
 gemini_client = None
 if os.getenv("GEMINI_API_KEY"):
     gemini_client = genai.Client()
 
 # ---------------------------------------------------------------------------
-# SISTEM CACHE (OPȚIUNEA C)
-# Salvează analizele în memorie temporară pentru a economisi cota API
+# SISTEM CACHE (OPTIUNEA C)
+# Salveaza analizele in memorie temporara pentru a economisi cota API
 # ---------------------------------------------------------------------------
 ANALYSIS_CACHE = {}
 CACHE_TTL_SECONDS = 1800  # 30 de minute (1800 secunde)
 
 # ---------------------------------------------------------------------------
-# COMPONENȚA COMPLETĂ INDICE BET (PLUS ALTE COMPANII LICHIDE DE PE BVB)
+# COMPONENTA COMPLETA INDICE BET (PLUS ALTE COMPANII LICHIDE DE PE BVB)
 # ---------------------------------------------------------------------------
 ALL_BVB_COMPANIES = [
     # --- Cele 20 de companii din Indicele BET ---
@@ -36,9 +29,9 @@ ALL_BVB_COMPANIES = [
     ("SNP", "OMV Petrom S.A.", "Energie & Petrol"),
     ("H2O", "SPEEH Hidroelectrica S.A.", "Energie Verde / Hidro"),
     ("SNG", "S.N.G.N. Romgaz S.A.", "Gaze Naturale"),
-    ("SNN", "S.N. Nuclearelectrica S.A.", "Energie Nucleară"),
+    ("SNN", "S.N. Nuclearelectrica S.A.", "Energie Nucleara"),
     ("BRD", "BRD - Groupe Societe Generale S.A.", "Sector Bancar"),
-    ("DIGI", "Digi Communications N.V.", "Telecomunicații"),
+    ("DIGI", "Digi Communications N.V.", "Telecomunicatii"),
     ("EL", "Electrica S.A.", "Distributie & Furnizare Energie"),
     ("TGN", "S.N.T.G.N. Transgaz S.A.", "Transport Gaze Naturale"),
     ("TEL", "C.N.T.E.E. Transelectrica S.A.", "Transport Energie Electrica"),
@@ -53,7 +46,7 @@ ALL_BVB_COMPANIES = [
     ("SFG", "Sphera Franchise Group S.A.", "Horeca / Restauration (KFC, Pizza Hut)"),
     ("COTE", "Conpet S.A.", "Transport Petrol prin Conducte"),
     
-    # --- Alte companii importante listate pe Piața Principală BVB ---
+    # --- Alte companii importante listate pe Piata Principala BVB ---
     ("BVB", "Bursa de Valori Bucuresti S.A.", "Infrastructura de Piata"),
     ("WINE", "Purcari Wineries Public Company Ltd.", "Productie Vinuri"),
     ("BIO", "Biofarm S.A.", "Industria Farmaceutica")
@@ -79,7 +72,7 @@ async def ask_gemini(req: QuestionRequest):
     sector = stock_info["sector"]
     
     # -----------------------------------------------------------------------
-    # 1. VERIFICARE CACHE (OPȚIUNEA C)
+    # 1. VERIFICARE CACHE (OPTIUNEA C)
     # -----------------------------------------------------------------------
     cache_key = f"{sym}:{user_q.lower()}"
     now_ts = time.time()
@@ -92,7 +85,7 @@ async def ask_gemini(req: QuestionRequest):
             return {"answer": cached_text + cache_note}
 
     # -----------------------------------------------------------------------
-    # 2. GENERARE PROMPT PE SURSE REALE (EVOLUȚIE PREȚ + BVB + ZF.ro + RECOMANDARE)
+    # 2. GENERARE PROMPT FARA DIACRITICE
     # -----------------------------------------------------------------------
     now_str = datetime.now().strftime("%d.%m.%Y")
 
@@ -129,14 +122,14 @@ async def ask_gemini(req: QuestionRequest):
     
     🎯 **RECOMANDARE FINALA AI**
     - **SEMNAL:** [CUMPARA / PASTREAZA (HOLD) / VINDE]
-    - **Motivatie scurtas:** De ce este indicat acest semnal pe baza pretului actual, a fundamentelor si dividendelor.
+    - **Motivatie scurtă:** De ce este indicat acest semnal pe baza pretului actual, a fundamentelor si dividendelor.
     """
     
     if not os.getenv("GEMINI_API_KEY") or not gemini_client:
         return {"answer": "**Mod Demo:** Configureaza cheia `GEMINI_API_KEY` in mediul tau de hosting (ex: Render)."}
 
     # -----------------------------------------------------------------------
-    # 3. INTEROGARE API CU FALLBACK & SALVARE ÎN CACHE
+    # 3. INTEROGARE API CU FALLBACK & SALVARE IN CACHE
     # -----------------------------------------------------------------------
     try:
         response = gemini_client.models.generate_content(
@@ -146,28 +139,28 @@ async def ask_gemini(req: QuestionRequest):
         )
         answer_text = response.text
         
-        # Salvare răspuns în Cache
+        # Salvare raspuns in Cache
         ANALYSIS_CACHE[cache_key] = (answer_text, now_ts)
         return {"answer": answer_text}
 
     except Exception as e:
         err_msg = str(e)
         
-        # Tratare inteligentă a erorii 429 Rate Limit
+        # Tratare inteligenta a erorii 429 Rate Limit
         if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
             try:
-                fallback_prompt = prompt + "\n\n(Notá: Generat direct din cunostintele financiare BVB din cauza limitei de interogari live)."
+                fallback_prompt = prompt + "\n\n(Notă: Generat direct din cunostintele financiare BVB din cauza limitei de interogari live)."
                 response = gemini_client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=fallback_prompt
                 )
-                answer_text = "*Notá: Limita de cautare live a fost atinsa temporar. Raspuns generat pe baza cunostintelor interne BVB:*\n\n" + response.text
+                answer_text = "*Notă: Limita de cautare live a fost atinsa temporar. Raspuns generat pe baza cunostintelor interne BVB:*\n\n" + response.text
                 
                 ANALYSIS_CACHE[cache_key] = (answer_text, now_ts - CACHE_TTL_SECONDS + 300)
                 return {"answer": answer_text}
 
             except Exception:
-                return {"answer": "A fost atinsa maxima de solicitari API. Te rugam sa reincerci peste 1-2 minute."}
+                return {"answer": "A fost atinsa limita maxima de solicitari API. Te rugam sa reincerci peste 1-2 minute."}
 
         return {"answer": f"Eroare la generarea analizei AI: {err_msg}"}
 

@@ -77,10 +77,10 @@ async def ask_gemini(req: QuestionRequest):
     Compania: {company_name} ({sym}), Sector: {sector}.
     Cerinta: "{user_q}"
 
-    Reguli obligatorii pentru raspuns (in limba romana, fara caractere speciale problematice):
+    Reguli obligatorii pentru raspuns (in limba romana simpla, fara diacritice):
     1. Ofera pretul curent si evolutia recenta a pretului pe BVB.
     2. Ofera rezultate financiare recente (Profit Net, Venituri, Dividende) de pe BVB.ro sau ZF.ro.
-    3. Ofera o recomandare clara de tip: CUMPARA, HOLD sau VINDE, cu argumente.
+    3. Ofera o recomandare clara de tip: CUMPARA, HOLD sau VINDE, cu scurte argumente.
     """
     
     if not os.getenv("GEMINI_API_KEY") or not gemini_client:
@@ -93,18 +93,15 @@ async def ask_gemini(req: QuestionRequest):
             config={"tools": [{"google_search": {}}]}
         )
         
-        # Siguranta totala la codare UTF-8
-        raw_text = response.text if response and response.text else "Fara raspuns de la model."
-        answer_text = raw_text.encode('utf-8', errors='ignore').decode('utf-8')
+        answer_text = response.text if response and response.text else "Fara raspuns."
         
+        # Salvam in cache
         ANALYSIS_CACHE[cache_key] = (answer_text, now_ts)
         return {"answer": answer_text}
 
-    except Exception as e:
-        err_msg = str(e).encode('utf-8', errors='ignore').decode('utf-8')
-        if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
-            return {"answer": "Atentie: Limita de interogari API a fost atinsa temporar. Te rugam sa astepti 1 minut."}
-        return {"answer": f"Eroare procesare: {err_msg}"}
+    except Exception:
+        # Prindem orice eroare fara sa mai incercam conversii complicate care dau crash pe ASCII
+        return {"answer": "Atentie: A aparut o limita de interogari sau o problema temporara de retea. Te rugam sa reincerci peste 1 minut."}
 
 
 @app.get("/", response_class=HTMLResponse)

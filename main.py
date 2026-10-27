@@ -8,23 +8,14 @@ from google import genai
 
 app = FastAPI(title="BVB Market Intelligence Terminal")
 
-# Initializare client Gemini
 gemini_client = None
 if os.getenv("GEMINI_API_KEY"):
     gemini_client = genai.Client()
 
-# ---------------------------------------------------------------------------
-# SISTEM CACHE (OPTIUNEA C)
-# Salveaza analizele in memorie temporara pentru a economisi cota API
-# ---------------------------------------------------------------------------
 ANALYSIS_CACHE = {}
-CACHE_TTL_SECONDS = 1800  # 30 de minute (1800 secunde)
+CACHE_TTL_SECONDS = 1800
 
-# ---------------------------------------------------------------------------
-# COMPONENTA COMPLETA INDICE BET (PLUS ALTE COMPANII LICHIDE DE PE BVB)
-# ---------------------------------------------------------------------------
 ALL_BVB_COMPANIES = [
-    # --- Cele 20 de companii din Indicele BET ---
     ("TLV", "Banca Transilvania S.A.", "Sector Bancar"),
     ("SNP", "OMV Petrom S.A.", "Energie & Petrol"),
     ("H2O", "SPEEH Hidroelectrica S.A.", "Energie Verde / Hidro"),
@@ -45,8 +36,6 @@ ALL_BVB_COMPANIES = [
     ("TRP", "TeraPlast S.A.", "Productie Materiale de Constructii"),
     ("SFG", "Sphera Franchise Group S.A.", "Horeca / Restauration (KFC, Pizza Hut)"),
     ("COTE", "Conpet S.A.", "Transport Petrol prin Conducte"),
-    
-    # --- Alte companii importante listate pe Piata Principala BVB ---
     ("BVB", "Bursa de Valori Bucuresti S.A.", "Infrastructura de Piata"),
     ("WINE", "Purcari Wineries Public Company Ltd.", "Productie Vinuri"),
     ("BIO", "Biofarm S.A.", "Industria Farmaceutica")
@@ -71,9 +60,6 @@ async def ask_gemini(req: QuestionRequest):
     company_name = stock_info["name"]
     sector = stock_info["sector"]
     
-    # -----------------------------------------------------------------------
-    # 1. VERIFICARE CACHE (OPTIUNEA C)
-    # -----------------------------------------------------------------------
     cache_key = f"{sym}:{user_q.lower()}"
     now_ts = time.time()
     
@@ -81,88 +67,44 @@ async def ask_gemini(req: QuestionRequest):
         cached_text, timestamp = ANALYSIS_CACHE[cache_key]
         if now_ts - timestamp < CACHE_TTL_SECONDS:
             minutes_left = int((CACHE_TTL_SECONDS - (now_ts - timestamp)) / 60)
-            cache_note = f"\n\n*(Nota: Analiza instant preluata din Cache. Valabila inca {minutes_left} minute fara a consuma din cota API)*"
-            return {"answer": cached_text + cache_note}
+            return {"answer": cached_text + f"\n\n*(Cache: {minutes_left} min ramase)*"}
 
-    # -----------------------------------------------------------------------
-    # 2. GENERARE PROMPT FARA DIACRITICE
-    # -----------------------------------------------------------------------
     now_str = datetime.now().strftime("%d.%m.%Y")
 
     prompt = f"""
     Esti un consultant financiar senior specializat pe Bursa de Valori Bucuresti (BVB) si Indicele BET.
-    Data actuala a raportului: {now_str}.
+    Data actuala: {now_str}.
+    Compania: {company_name} ({sym}), Sector: {sector}.
+    Cerinta: "{user_q}"
 
-    COMPANIA ANALIZATA:
-    - Simbol BVB: {sym}
-    - Nume Companie: {company_name}
-    - Sector: {sector}
-
-    CERINTA UTILIZATORULUI: "{user_q}"
-
-    MANDAT STRICT DE CAUTARE SI STRUCTURARE RAPORT (BVB.ro / ZF.ro / Presa Financiara):
-    1. Cauta pe Google/ZF.ro/BVB pretul curent al actiunii {sym}, evolutia recenta a pretului (pe ultimele luni/an) si randamentul de pret.
-    2. Cauta cele mai recente date financiare oficiale (Profit Net, Venituri, Dividende) publicate pe BVB sau in Ziarul Financiar.
-    3. Analizeaza daca actiunea este subevaluata, supraevaluata sau echilibrata.
-    
-    OBLIGATORIU STRUCTUREAZA RASPUNSUL EXACT IN URMATOARELE SECTIUNI:
-    
-    📌 **EVOLUTIA PRETULUI & DATE DE PIATA**
-    - Pret Curent (RON) si tendinta recenta (crestere / scadere / consolidare)
-    - Minim / Maxim recent sau evolutia YTD / pe 12 luni
-    - Volum / Lichiditate pe BVB
-    
-    📊 **REZULTATE FINANCIARE REALE & DIVIDENDE (BVB / ZF.ro)**
-    - Profit Net si Venituri din cel mai recent raport
-    - Randament dividend (Dividend Yield estimat sau aprobat)
-    - Principalele stiri si comunicate din Ziarul Financiar (ZF.ro)
-    
-    ⚠️ **PERSPECTIVE & RISCURI**
-    - Factori de crestere si riscuri sectoriale
-    
-    🎯 **RECOMANDARE FINALA AI**
-    - **SEMNAL:** [CUMPARA / PASTREAZA (HOLD) / VINDE]
-    - **Motivatie scurtă:** De ce este indicat acest semnal pe baza pretului actual, a fundamentelor si dividendelor.
+    Reguli obligatorii pentru raspuns (in limba romana, fara caractere speciale problematice):
+    1. Ofera pretul curent si evolutia recenta a pretului pe BVB.
+    2. Ofera rezultate financiare recente (Profit Net, Venituri, Dividende) de pe BVB.ro sau ZF.ro.
+    3. Ofera o recomandare clara de tip: CUMPARA, HOLD sau VINDE, cu argumente.
     """
     
     if not os.getenv("GEMINI_API_KEY") or not gemini_client:
-        return {"answer": "**Mod Demo:** Configureaza cheia `GEMINI_API_KEY` in mediul tau de hosting (ex: Render)."}
+        return {"answer": "Lipseste cheia GEMINI_API_KEY in setarile de pe Render."}
 
-    # -----------------------------------------------------------------------
-    # 3. INTEROGARE API CU FALLBACK & SALVARE IN CACHE
-    # -----------------------------------------------------------------------
     try:
         response = gemini_client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
             config={"tools": [{"google_search": {}}]}
         )
-        answer_text = response.text
         
-        # Salvare raspuns in Cache
+        # Siguranta totala la codare UTF-8
+        raw_text = response.text if response and response.text else "Fara raspuns de la model."
+        answer_text = raw_text.encode('utf-8', errors='ignore').decode('utf-8')
+        
         ANALYSIS_CACHE[cache_key] = (answer_text, now_ts)
         return {"answer": answer_text}
 
     except Exception as e:
-        err_msg = str(e)
-        
-        # Tratare inteligenta a erorii 429 Rate Limit
+        err_msg = str(e).encode('utf-8', errors='ignore').decode('utf-8')
         if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
-            try:
-                fallback_prompt = prompt + "\n\n(Notă: Generat direct din cunostintele financiare BVB din cauza limitei de interogari live)."
-                response = gemini_client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=fallback_prompt
-                )
-                answer_text = "*Notă: Limita de cautare live a fost atinsa temporar. Raspuns generat pe baza cunostintelor interne BVB:*\n\n" + response.text
-                
-                ANALYSIS_CACHE[cache_key] = (answer_text, now_ts - CACHE_TTL_SECONDS + 300)
-                return {"answer": answer_text}
-
-            except Exception:
-                return {"answer": "A fost atinsa limita maxima de solicitari API. Te rugam sa reincerci peste 1-2 minute."}
-
-        return {"answer": f"Eroare la generarea analizei AI: {err_msg}"}
+            return {"answer": "Atentie: Limita de interogari API a fost atinsa temporar. Te rugam sa astepti 1 minut."}
+        return {"answer": f"Eroare procesare: {err_msg}"}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -173,7 +115,7 @@ async def read_item():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>BVB Market Intelligence Terminal - Indicele BET</title>
+        <title>BVB Market Intelligence Terminal</title>
         <style>
             :root { --bg-primary: #0f172a; --bg-secondary: #1e293b; --text-primary: #f8fafc; --text-secondary: #94a3b8; --accent: #38bdf8; --green: #22c55e; --border: #334155; }
             * { box-sizing: border-box; margin: 0; padding: 0; }

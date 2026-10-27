@@ -1,14 +1,17 @@
 import os
 import time
 import sys
+
+# Forțare completă a codării UTF-8 pentru a preveni orice eroare de tip ASCII pe Render
+os.environ["PYTHONIOENCODING"] = "utf-8"
+os.environ["LANG"] = "C.UTF-8"
+os.environ["LC_ALL"] = "C.UTF-8"
+
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from google import genai
-
-# Forțare codare UTF-8 pentru a preveni erorile de pe serverele cloud
-os.environ["PYTHONIOENCODING"] = "utf-8"
 
 app = FastAPI(title="BVB Market Intelligence Terminal")
 
@@ -36,24 +39,24 @@ ALL_BVB_COMPANIES = [
     ("SNN", "S.N. Nuclearelectrica S.A.", "Energie Nucleară"),
     ("BRD", "BRD - Groupe Societe Generale S.A.", "Sector Bancar"),
     ("DIGI", "Digi Communications N.V.", "Telecomunicații"),
-    ("EL", "Electrica S.A.", "Distribuție & Furnizare Energie"),
+    ("EL", "Electrica S.A.", "Distributie & Furnizare Energie"),
     ("TGN", "S.N.T.G.N. Transgaz S.A.", "Transport Gaze Naturale"),
-    ("TEL", "C.N.T.E.E. Transelectrica S.A.", "Transport Energie Electrică"),
+    ("TEL", "C.N.T.E.E. Transelectrica S.A.", "Transport Energie Electrica"),
     ("M", "MedLife S.A.", "Servicii Medicale Private"),
-    ("ONE", "One United Properties S.A.", "Dezvoltare Imobiliară / Real Estate"),
-    ("FP", "Fondul Proprietatea S.A.", "Fond de Investiții"),
+    ("ONE", "One United Properties S.A.", "Dezvoltare Imobiliara / Real Estate"),
+    ("FP", "Fondul Proprietatea S.A.", "Fond de Investitii"),
     ("TTS", "Transport Trade Services S.A.", "Transport Fluvial & Portuar"),
     ("PE", "Premier Energy PLC", "Furnizare Energie & Gaze"),
-    ("AQ", "Aquila Part Prod Com S.A.", "Distribuție & Logistică FMCG"),
-    ("ATB", "Antibiotice S.A.", "Industria Farmaceutică"),
-    ("TRP", "TeraPlast S.A.", "Producție Materiale de Construcții"),
+    ("AQ", "Aquila Part Prod Com S.A.", "Distributie & Logistica FMCG"),
+    ("ATB", "Antibiotice S.A.", "Industria Farmaceutica"),
+    ("TRP", "TeraPlast S.A.", "Productie Materiale de Constructii"),
     ("SFG", "Sphera Franchise Group S.A.", "Horeca / Restauration (KFC, Pizza Hut)"),
     ("COTE", "Conpet S.A.", "Transport Petrol prin Conducte"),
     
     # --- Alte companii importante listate pe Piața Principală BVB ---
-    ("BVB", "Bursa de Valori București S.A.", "Infrastructură de Piață"),
-    ("WINE", "Purcari Wineries Public Company Ltd.", "Producție Vinuri"),
-    ("BIO", "Biofarm S.A.", "Industria Farmaceutică")
+    ("BVB", "Bursa de Valori Bucuresti S.A.", "Infrastructura de Piata"),
+    ("WINE", "Purcari Wineries Public Company Ltd.", "Productie Vinuri"),
+    ("BIO", "Biofarm S.A.", "Industria Farmaceutica")
 ]
 
 STOCKS_DB = {symbol: {"name": name, "sector": sector} for symbol, name, sector in ALL_BVB_COMPANIES}
@@ -85,7 +88,7 @@ async def ask_gemini(req: QuestionRequest):
         cached_text, timestamp = ANALYSIS_CACHE[cache_key]
         if now_ts - timestamp < CACHE_TTL_SECONDS:
             minutes_left = int((CACHE_TTL_SECONDS - (now_ts - timestamp)) / 60)
-            cache_note = f"\n\n*(Notă: Analiza instant preluata din Cache. Valabila inca {minutes_left} minute fara a consuma din cota API)*"
+            cache_note = f"\n\n*(Nota: Analiza instant preluata din Cache. Valabila inca {minutes_left} minute fara a consuma din cota API)*"
             return {"answer": cached_text + cache_note}
 
     # -----------------------------------------------------------------------
@@ -164,7 +167,7 @@ async def ask_gemini(req: QuestionRequest):
                 return {"answer": answer_text}
 
             except Exception:
-                return {"answer": "A fost atinsa limita maxima de solicitari API. Te rugam sa reincerci peste 1-2 minute."}
+                return {"answer": "A fost atinsa maxima de solicitari API. Te rugam sa reincerci peste 1-2 minute."}
 
         return {"answer": f"Eroare la generarea analizei AI: {err_msg}"}
 

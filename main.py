@@ -67,7 +67,7 @@ async def ask_gemini(req: QuestionRequest):
     sym = req.symbol.upper()
     user_q = req.user_question.strip()
     
-    stock_info = STOCKS_DB.get(sym, {"name": sym, "sector": "Piața Reglementată BVB"})
+    stock_info = STOCKS_DB.get(sym, {"name": sym, "sector": "Piata Reglementata BVB"})
     company_name = stock_info["name"]
     sector = stock_info["sector"]
     
@@ -81,7 +81,7 @@ async def ask_gemini(req: QuestionRequest):
         cached_text, timestamp = ANALYSIS_CACHE[cache_key]
         if now_ts - timestamp < CACHE_TTL_SECONDS:
             minutes_left = int((CACHE_TTL_SECONDS - (now_ts - timestamp)) / 60)
-            cache_note = f"\n\n⚡ *(Notă: Analiză instantă preluată din Cache. Valabilă încă {minutes_left} minute fără a consuma din cota API)*"
+            cache_note = f"\n\n*(Notă: Analiza instant preluata din Cache. Valabila inca {minutes_left} minute fara a consuma din cota API)*"
             return {"answer": cached_text + cache_note}
 
     # -----------------------------------------------------------------------
@@ -90,43 +90,43 @@ async def ask_gemini(req: QuestionRequest):
     now_str = datetime.now().strftime("%d %B %Y")
 
     prompt = f"""
-    Ești un consultant financiar senior specializat pe Bursa de Valori București (BVB) și Indicele BET.
-    Data actuală a raportului: {now_str}.
+    Esti un consultant financiar senior specializat pe Bursa de Valori Bucuresti (BVB) si Indicele BET.
+    Data actuala a raportului: {now_str}.
 
-    COMPANIA ANALIZATĂ:
+    COMPANIA ANALIZATA:
     - Simbol BVB: {sym}
     - Nume Companie: {company_name}
     - Sector: {sector}
 
-    CERINȚA UTILIZATORULUI: "{user_q}"
+    CERINTA UTILIZATORULUI: "{user_q}"
 
-    MANDAT STRICT DE CĂUTARE ȘI STRUCTURARE RAPORT (BVB.ro / ZF.ro / Presă Financiară):
-    1. Caută pe Google/ZF.ro/BVB prețul curent al acțiunii {sym}, evoluția recentă a prețului (pe ultimele luni/an) și randamentul de preț.
-    2. Caută cele mai recente date financiare oficiale (Profit Net, Venituri, Dividende) publicate pe BVB sau în Ziarul Financiar.
-    3. Analizează dacă acțiunea este subevaluată, supraevaluată sau echilibrată.
+    MANDAT STRICT DE CAUTARE SI STRUCTURARE RAPORT (BVB.ro / ZF.ro / Presa Financiara):
+    1. Cauta pe Google/ZF.ro/BVB pretul curent al actiunii {sym}, evolutia recenta a pretului (pe ultimele luni/an) si randamentul de pret.
+    2. Cauta cele mai recente date financiare oficiale (Profit Net, Venituri, Dividende) publicate pe BVB sau in Ziarul Financiar.
+    3. Analizeaza daca actiunea este subevaluata, supraevaluata sau echilibrata.
     
-    OBLIGATORIU STRUCTUREAZĂ RĂSPUNSUL EXACT ÎN URMĂTOARELE SECȚIUNI:
+    OBLIGATORIU STRUCTUREAZA RASPUNSUL EXACT IN URMATOARELE SECTIUNI:
     
-    📌 **EVOLUȚIA PREȚULUI & DATE DE PIAȚĂ**
-    - Preț Curent (RON) și tendință recentă (creștere / scădere / consolidare)
-    - Minim / Maxim recent sau evoluția YTD / pe 12 luni
+    📌 **EVOLUTIA PRETULUI & DATE DE PIATA**
+    - Pret Curent (RON) si tendinta recenta (crestere / scadere / consolidare)
+    - Minim / Maxim recent sau evolutia YTD / pe 12 luni
     - Volum / Lichiditate pe BVB
     
     📊 **REZULTATE FINANCIARE REALE & DIVIDENDE (BVB / ZF.ro)**
-    - Profit Net și Venituri din cel mai recent raport
+    - Profit Net si Venituri din cel mai recent raport
     - Randament dividend (Dividend Yield estimat sau aprobat)
-    - Principalele știri și comunicate din Ziarul Financiar (ZF.ro)
+    - Principalele stiri si comunicate din Ziarul Financiar (ZF.ro)
     
     ⚠️ **PERSPECTIVE & RISCURI**
-    - Factori de creștere și riscuri sectoriale
+    - Factori de crestere si riscuri sectoriale
     
-    🎯 **RECOMANDARE FINALĂ AI**
-    - **SEMNAL:** [CUMPĂRĂ / PĂSTREAZĂ (HOLD) / VINDE]
-    - **Motivație scurtă:** De ce este indicat acest semnal pe baza prețului actual, a fundamentelor și dividendelor.
+    🎯 **RECOMANDARE FINALA AI**
+    - **SEMNAL:** [CUMPARA / PASTREAZA (HOLD) / VINDE]
+    - **Motivatie scurtas:** De ce este indicat acest semnal pe baza pretului actual, a fundamentelor si dividendelor.
     """
     
     if not os.getenv("GEMINI_API_KEY") or not gemini_client:
-        return {"answer": "**Mod Demo:** Configurează cheia `GEMINI_API_KEY` în mediul tău de hosting (ex: Render)."}
+        return {"answer": "**Mod Demo:** Configureaza cheia `GEMINI_API_KEY` in mediul tau de hosting (ex: Render)."}
 
     # -----------------------------------------------------------------------
     # 3. INTEROGARE API CU FALLBACK & SALVARE ÎN CACHE
@@ -149,19 +149,18 @@ async def ask_gemini(req: QuestionRequest):
         # Tratare inteligentă a erorii 429 Rate Limit
         if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
             try:
-                fallback_prompt = prompt + "\n\n(Notă: Generat direct din cunoștințele financiare BVB din cauza limitei de interogări live pe minut)."
+                fallback_prompt = prompt + "\n\n(Notá: Generat direct din cunostintele financiare BVB din cauza limitei de interogari live)."
                 response = gemini_client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=fallback_prompt
                 )
-                answer_text = "⚠️ *Notă: Limita de căutare live ZF.ro/BVB a fost atinsă temporar pe minut/zi. Răspuns generat pe baza cunoștințelor interne BVB:*\n\n" + response.text
+                answer_text = "*Notá: Limita de cautare live a fost atinsa temporar. Raspuns generat pe baza cunostintelor interne BVB:*\n\n" + response.text
                 
-                # Salvăm temporar răspunsul de fallback (pe 5 minute)
                 ANALYSIS_CACHE[cache_key] = (answer_text, now_ts - CACHE_TTL_SECONDS + 300)
                 return {"answer": answer_text}
 
             except Exception:
-                return {"answer": "A fost atinsă limita maximă de solicitări API. Vă rugăm să reîncercați peste 1-2 minute."}
+                return {"answer": "A fost atinsa limita maxima de solicitari API. Te rugam sa reincerci peste 1-2 minute."}
 
         return {"answer": f"Eroare la generarea analizei AI: {err_msg}"}
 
@@ -201,14 +200,14 @@ async def read_item():
         <div class="container">
             <header>
                 <h1>BVB Market Intelligence Terminal</h1>
-                <span class="badge">Sursă: ZF.ro, Preț & Indicele BET</span>
+                <span class="badge">Sursa: ZF.ro, Pret & Indicele BET</span>
             </header>
             
             <div class="grid">
                 <div>
                     <div class="card">
-                        <h2 class="card-title">Selectează Emitent BET</h2>
-                        <label for="stockSelect">Companie listată:</label>
+                        <h2 class="card-title">Selecteaza Emitent BET</h2>
+                        <label for="stockSelect">Companie listata:</label>
                         <select id="stockSelect"></select>
 
                         <div id="companyBox" class="company-info-box">
@@ -219,20 +218,20 @@ async def read_item():
 
                     <div class="card">
                         <h2 class="card-title">Analize Rapide</h2>
-                        <button class="quick-btn" onclick="setQuestion('Oferă un raport complet cu evoluția prețului, rezultate financiare BVB, știri ZF.ro și recomandare Cumpără/Hold/Vinde.')">📊 Raport Complet & Recomandare</button>
-                        <button class="quick-btn" onclick="setQuestion('Care este evoluția recentă a prețului acțiunii și ce țintă de preț indică analizele recente de pe ZF.ro?')">📈 Evoluție Preț & Țintă</button>
-                        <button class="quick-btn" onclick="setQuestion('Este acum un moment bun de cumpărat sau de vândut? Argumentează decizia (Cumpără/Hold/Vinde).')">🎯 Recomandare Cumpără / Vinde</button>
+                        <button class="quick-btn" onclick="setQuestion('Ofera un raport complet cu evolutia pretului, rezultate financiare BVB, stiri ZF.ro si recomandare Cumpara/Hold/Vinde.')">📊 Raport Complet & Recomandare</button>
+                        <button class="quick-btn" onclick="setQuestion('Care este evolutia recenta a pretului actiunii si ce tinta de pret indica analizele recente de pe ZF.ro?')">📈 Evolutie Pret & Tinta</button>
+                        <button class="quick-btn" onclick="setQuestion('Este acum un moment bun de cumparat sau de vandut? Argumenteaza decizia (Cumpara/Hold/Vinde).')">🎯 Recomandare Cumpara / Vinde</button>
                         
-                        <label style="margin-top: 15px;">Întrebare Personalizată:</label>
-                        <input type="text" id="userQuestion" placeholder="Ex: Care e prețul actual și randamentul la dividend?" />
-                        <button id="askBtn">Trimite Spre Analiză</button>
+                        <label style="margin-top: 15px;">Intrebare Personalizata:</label>
+                        <input type="text" id="userQuestion" placeholder="Ex: Care e pretul actual si randamentul la dividend?" />
+                        <button id="askBtn">Trimite Spre Analiza</button>
                     </div>
                 </div>
 
                 <div>
                     <div class="card">
-                        <h2 class="card-title">Raport Financiar, Preț & Recomandare AI</h2>
-                        <div id="resultBox" class="result-box">Selectează o companie pentru a genera raportul financiar cu evoluția prețului și recomandarea finală (CUMPĂRĂ / HOLD / VINDE).</div>
+                        <h2 class="card-title">Raport Financiar, Pret & Recomandare AI</h2>
+                        <div id="resultBox" class="result-box">Selecteaza o companie pentru a genera raportul financiar cu evolutia pretului si recomandarea finala (CUMPARA / HOLD / VINDE).</div>
                     </div>
                 </div>
             </div>
@@ -267,7 +266,7 @@ async def read_item():
                         updateCompanyBox('TLV');
                     }
                 } catch (e) {
-                    console.error("Eroare la încărcare:", e);
+                    console.error("Eroare la incarcare:", e);
                 }
             }
 
@@ -291,8 +290,8 @@ async def read_item():
 
             async function triggerAsk() {
                 const symbol = stockSelect.value;
-                const question = userQuestion.value.trim() || 'Oferă un raport complet cu evoluția prețului, rezultate financiare BVB, știri ZF.ro și recomandare Cumpără/Hold/Vinde.';
-                resultBox.innerHTML = "<em>Preluare date în curs... AI-ul verifică evoluția prețului, articolele ZF.ro și formulează recomandarea finală. Așteaptă câteva secunde...</em>";
+                const question = userQuestion.value.trim() || 'Ofera un raport complet cu evolutia pretului, rezultate financiare BVB, stiri ZF.ro si recomandare Cumpara/Hold/Vinde.';
+                resultBox.innerHTML = "<em>Preluare date in curs... AI-ul verifica evolutia pretului, articolele ZF.ro si formuleaza recomandarea finala. Asteapta cateva secunde...</em>";
                 try {
                     const res = await fetch('/api/ask', {
                         method: 'POST',
@@ -302,7 +301,7 @@ async def read_item():
                     const data = await res.json();
                     resultBox.innerText = data.answer;
                 } catch (e) {
-                    resultBox.innerText = "Eroare la conexiunea cu serviciul de analiză.";
+                    resultBox.innerText = "Eroare la conexiunea cu serviciul de analiza.";
                 }
             }
 

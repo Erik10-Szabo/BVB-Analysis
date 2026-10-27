@@ -1,10 +1,14 @@
 import os
 import time
+import sys
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from google import genai
+
+# Forțare codare UTF-8 pentru a preveni erorile de pe serverele cloud
+os.environ["PYTHONIOENCODING"] = "utf-8"
 
 app = FastAPI(title="BVB Market Intelligence Terminal")
 
@@ -87,7 +91,7 @@ async def ask_gemini(req: QuestionRequest):
     # -----------------------------------------------------------------------
     # 2. GENERARE PROMPT PE SURSE REALE (EVOLUȚIE PREȚ + BVB + ZF.ro + RECOMANDARE)
     # -----------------------------------------------------------------------
-    now_str = datetime.now().strftime("%d %B %Y")
+    now_str = datetime.now().strftime("%d.%m.%Y")
 
     prompt = f"""
     Esti un consultant financiar senior specializat pe Bursa de Valori Bucuresti (BVB) si Indicele BET.
